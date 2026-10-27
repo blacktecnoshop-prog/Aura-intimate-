@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --color-plum-950: #1b0c15;
+  --color-plum-900: #26111e;
+  --color-plum-800: #35172b;
+  --color-plum-700: #49203c;
+  --color-plum-600: #622d52;
+
+  --color-blush-50: #fdfaf9;
+  --color-blush-100: #fbf3f1;
+  --color-blush-200: #f6e4e0;
+  --color-blush-300: #eed0c9;
+
+  --color-cream-50: #fdfcfa;
+  --color-cream-100: #f9f6f0;
+  --color-cream-200: #f1ede4;
+
+  --color-mauve-400: #b59b9f;
+  --color-mauve-600: #886a72;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #fdfcfa;
+  color: #26111e;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+.font-serif-luxury {
+  font-family: var(--font-serif);
+}
+
+/* Custom scrollbar for sleek e-commerce feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f7f4ee;
+}
+::-webkit-scrollbar-thumb {
+  background: #d6bebe;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9b7e84;
+}

@@ -1,0 +1,13 @@
+# robots.txt for Aura Intimates
+User-agent: *
+Allow: /
+Allow: /src/assets/
+Allow: /uploads/
+Disallow: /api/admin/
+Disallow: /api/upload
+Disallow: /admin
+Disallow: /?search=*
+Disallow: /*?*sort=*
+
+# Crawlable XML Sitemap
+Sitemap: /sitemap.xml

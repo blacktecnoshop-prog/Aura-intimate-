@@ -1,0 +1,6 @@
+{
+  "name": "blackTecnoShop",
+  "description": "Premium women's innerwear & luxury essentials e-commerce store with Instagram ordering and secure owner management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

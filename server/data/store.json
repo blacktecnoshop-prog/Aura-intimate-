@@ -1,0 +1,530 @@
+{
+  "admin": {
+    "salt": "be238cceca11b3ce6b75f1e78375b05c",
+    "passwordHash": "c17cada3d4c05ee203f183f8681e2ff84d9550bbff6596e22e920cbed6b308637de7e9b7840cfc246e509277828dda05a961dc0264745c3979272b05c4acc764",
+    "recoveryKeyHash": "168e152b32665553321345db53cd743acdad596da006fe60aed92d97409047dd69f1e7fcf889e65da1633b3e88874aed1857a93c40f809fe42380630fcdeccb1",
+    "setupCompleted": true,
+    "lastPasswordChange": "2026-10-25T07:30:11.357Z"
+  },
+  "settings": {
+    "brandName": "Aura Intimates",
+    "brandTagline": "Comfort · Confidence · You",
+    "instagramHandle": "@auraintimates",
+    "instagramUrl": "https://www.instagram.com/auraintimates",
+    "contactEmail": "contact@auraintimates.com",
+    "contactPhone": "+91 98765 43210",
+    "currency": "INR",
+    "currencySymbol": "₹",
+    "announcementText": "Free Discreet Delivery across India on orders above ₹999 | 100% Genuine Luxury Essentials",
+    "announcementEnabled": true,
+    "shippingFee": 99,
+    "freeShippingThreshold": 999
+  },
+  "categories": [
+    {
+      "id": "bras",
+      "name": "Bras",
+      "slug": "bras",
+      "description": "Supportive, wire-free & balconette silhouettes crafted from buttery-soft fabrics.",
+      "image": "/images/product_seamless_bra_1792781849562.jpg",
+      "order": 1,
+      "featured": true
+    },
+    {
+      "id": "panties",
+      "name": "Panties",
+      "slug": "panties",
+      "description": "Breathable organic cotton and lustrous silk-satin knickers designed for all-day ease.",
+      "image": "/images/product_satin_panty_set_1792781849920.jpg",
+      "order": 2,
+      "featured": true
+    },
+    {
+      "id": "matching-sets",
+      "name": "Matching Sets",
+      "slug": "matching-sets",
+      "description": "Coordinated bra and panty pairs uniting sensual lace and rich plum satin.",
+      "image": "/images/product_matching_lingerie_1792781849792.jpg",
+      "order": 3,
+      "featured": true
+    },
+    {
+      "id": "everyday-essentials",
+      "name": "Everyday Essentials",
+      "slug": "everyday-essentials",
+      "description": "Second-skin foundations, invisible lines, and weightless comfort for your daily wardrobe.",
+      "image": "/images/hero_luxury_innerwear_1792781847179.jpg",
+      "order": 4,
+      "featured": true
+    },
+    {
+      "id": "seamless-innerwear",
+      "name": "Seamless Innerwear",
+      "slug": "seamless-innerwear",
+      "description": "Zero friction, laser-cut edges, and undetectable under-clothing support.",
+      "image": "/images/product_seamless_bra_1792781849562.jpg",
+      "order": 5,
+      "featured": false
+    },
+    {
+      "id": "sports-bras",
+      "name": "Sports Bras",
+      "slug": "sports-bras",
+      "description": "Moisture-wicking, bounce-control innerwear for yoga, workouts, and high mobility.",
+      "image": "/images/product_lace_bralette_1792781848040.jpg",
+      "order": 6,
+      "featured": false
+    },
+    {
+      "id": "shapewear",
+      "name": "Shapewear",
+      "slug": "shapewear",
+      "description": "Gentle contouring briefs and high-waist waist smoothers with flexible boning.",
+      "image": "/images/product_matching_lingerie_1792781849792.jpg",
+      "order": 7,
+      "featured": false
+    },
+    {
+      "id": "sale",
+      "name": "Sale & Offers",
+      "slug": "sale",
+      "description": "Genuine limited-run discounts on seasonal colors and curated bundles.",
+      "image": "/images/product_lace_bralette_1792781848040.jpg",
+      "order": 8,
+      "featured": false
+    }
+  ],
+  "banners": [
+    {
+      "id": "banner-1",
+      "title": "Comfort · Confidence · You",
+      "subtitle": "Discover your everyday essentials crafted with artisanal softness and flawless tailored support.",
+      "buttonText": "Explore Collection",
+      "buttonLink": "#products",
+      "image": "/images/hero_luxury_innerwear_1792781847179.jpg",
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "bts-101",
+      "sku": "BTS-BR-01",
+      "name": "Aura Cloud Seamless T-Shirt Bra",
+      "categoryId": "seamless-innerwear",
+      "categoryName": "Seamless Innerwear",
+      "sellingPrice": 1299,
+      "originalPrice": 1699,
+      "discountPercent": 24,
+      "description": "The Aura Cloud T-Shirt Bra is engineered with micro-bonded seamless wings and ultra-plush molded cups. Designed to be completely invisible beneath silk tops, t-shirts, and bodycon dresses.",
+      "fabricAndCare": "82% Polyamide, 18% Elastane. 100% Cotton gusset lining. Hand wash cold with mild detergent. Do not wring or tumble dry.",
+      "hygieneNotice": "Eligible for size exchange within 7 days if unworn, unwashed, and original security tags remain intact.",
+      "stock": 35,
+      "featured": true,
+      "newArrival": true,
+      "isSale": true,
+      "images": [
+        "/images/product_seamless_bra_1792781849562.jpg",
+        "/images/hero_luxury_innerwear_1792781847179.jpg"
+      ],
+      "colors": [
+        {
+          "name": "Nude Blush",
+          "hex": "#D7A79D",
+          "imageIndex": 0
+        },
+        {
+          "name": "Warm Ivory",
+          "hex": "#F7F1E7",
+          "imageIndex": 1
+        },
+        {
+          "name": "Midnight Onyx",
+          "hex": "#1E1E24",
+          "imageIndex": 0
+        }
+      ],
+      "sizes": [
+        "32B",
+        "32C",
+        "34B",
+        "34C",
+        "36B",
+        "36C",
+        "38B"
+      ],
+      "matchingProductIds": [
+        "bts-103"
+      ],
+      "createdAt": "2026-10-01T10:00:00Z",
+      "metaTitle": "Aura Cloud Seamless T-Shirt Bra | Best Everyday Bra India",
+      "metaDescription": "Shop the ultra-comfortable Aura Cloud seamless t-shirt bra in India with discreet delivery and 100% untouched hygiene liner seal.",
+      "imageAlt": "Aura Cloud seamless t-shirt bra in almond beige with wire-free cups",
+      "isPublished": true,
+      "updatedAt": "2026-10-25T07:30:31.956Z"
+    },
+    {
+      "id": "bts-102",
+      "sku": "BTS-BR-02",
+      "name": "Nocturne French Chantilly Lace Bralette",
+      "categoryId": "bras",
+      "categoryName": "Bras",
+      "sellingPrice": 1499,
+      "originalPrice": 1999,
+      "discountPercent": 25,
+      "description": "Delicate floral eyelash lace meets soft underbust scalloping in our signature Nocturne Bralette. Wire-free with dual adjustable gold-finish sliders and a double-hook back closure.",
+      "fabricAndCare": "88% Nylon Lace, 12% Spandex. Delicate mesh lining. Hand wash cold in laundry bag. Dry flat in shade.",
+      "hygieneNotice": "Non-returnable if hygiene seal is broken. Size exchange supported on unopened/sealed items.",
+      "stock": 22,
+      "featured": true,
+      "newArrival": false,
+      "isSale": true,
+      "images": [
+        "/images/product_lace_bralette_1792781848040.jpg",
+        "/images/product_matching_lingerie_1792781849792.jpg"
+      ],
+      "colors": [
+        {
+          "name": "Noir Black",
+          "hex": "#191919",
+          "imageIndex": 0
+        },
+        {
+          "name": "Muted Mauve",
+          "hex": "#8B6B75",
+          "imageIndex": 1
+        },
+        {
+          "name": "Rose Petal",
+          "hex": "#DCAEAE",
+          "imageIndex": 0
+        }
+      ],
+      "sizes": [
+        "30B",
+        "32B",
+        "32C",
+        "34B",
+        "34C",
+        "36B",
+        "36C"
+      ],
+      "matchingProductIds": [
+        "bts-104"
+      ],
+      "createdAt": "2026-10-05T12:00:00Z",
+      "metaTitle": "Nocturne French Chantilly Lace Bralette — Luxury Women's Innerwear | Aura Intimates",
+      "metaDescription": "Shop Nocturne French Chantilly Lace Bralette online at Aura Intimates. Delicate floral eyelash lace meets soft underbust scalloping in our signature Nocturne Bralette. Wire-free wit... Discreet packaging across India."
+    },
+    {
+      "id": "bts-103",
+      "sku": "BTS-PN-01",
+      "name": "Luxe Mulberry Silk-Satin Briefs (Trio Pack)",
+      "categoryId": "panties",
+      "categoryName": "Panties",
+      "sellingPrice": 1199,
+      "originalPrice": 1599,
+      "discountPercent": 25,
+      "description": "A curated 3-pack of mid-rise briefs spun from pure fluid silk-satin with fine floral scalloped eyelash edging. Features pure bamboo cotton breathable gusset for optimal hygiene.",
+      "fabricAndCare": "92% Mulberry Silk Satin, 8% Elastane. 100% Organic Bamboo Cotton gusset. Hand wash gentle. Flat air dry.",
+      "hygieneNotice": "For health and intimate hygiene safety, panties with broken protective seal liners are strictly non-returnable.",
+      "stock": 40,
+      "featured": true,
+      "newArrival": true,
+      "isSale": true,
+      "images": [
+        "/images/product_satin_panty_set_1792781849920.jpg",
+        "/images/product_matching_lingerie_1792781849792.jpg"
+      ],
+      "colors": [
+        {
+          "name": "Trio: Blush, Mauve & Champagne",
+          "hex": "#C4A69D",
+          "imageIndex": 0
+        }
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "matchingProductIds": [
+        "bts-101"
+      ],
+      "createdAt": "2026-10-10T14:00:00Z",
+      "metaTitle": "Luxe Mulberry Silk-Satin Briefs (Trio Pack) — Luxury Women's Innerwear | Aura Intimates",
+      "metaDescription": "Shop Luxe Mulberry Silk-Satin Briefs (Trio Pack) online at Aura Intimates. A curated 3-pack of mid-rise briefs spun from pure fluid silk-satin with fine floral scalloped eyelash edging.... Discreet packaging across India."
+    },
+    {
+      "id": "bts-104",
+      "sku": "BTS-ST-01",
+      "name": "Royal Plum Satin & Eyelash Lace Set",
+      "categoryId": "matching-sets",
+      "categoryName": "Matching Sets",
+      "sellingPrice": 2499,
+      "originalPrice": 3299,
+      "discountPercent": 24,
+      "description": "The pinnacle of luxury tailoring. Includes our tailored demi-cup satin bra and matching high-waisted shaping brief. Finished in deep imperial plum with French scallop lace panels.",
+      "fabricAndCare": "85% Satin Silk, 15% Elastane. Lace embroidery. Hand wash in cold water with silk-safe liquid.",
+      "hygieneNotice": "Sets must be tried on over existing garments with panty protective seal completely intact for exchange.",
+      "stock": 18,
+      "featured": true,
+      "newArrival": true,
+      "isSale": true,
+      "images": [
+        "/images/product_matching_lingerie_1792781849792.jpg",
+        "/images/hero_luxury_innerwear_1792781847179.jpg"
+      ],
+      "colors": [
+        {
+          "name": "Imperial Plum",
+          "hex": "#441B33",
+          "imageIndex": 0
+        },
+        {
+          "name": "Champagne Ivory",
+          "hex": "#EBE2D5",
+          "imageIndex": 1
+        }
+      ],
+      "sizes": [
+        "32B / S",
+        "32C / M",
+        "34B / M",
+        "34C / L",
+        "36B / L",
+        "36C / XL"
+      ],
+      "matchingProductIds": [
+        "bts-102"
+      ],
+      "createdAt": "2026-10-12T09:00:00Z",
+      "metaTitle": "Royal Plum Satin & Eyelash Lace Set — Luxury Women's Innerwear | Aura Intimates",
+      "metaDescription": "Shop Royal Plum Satin & Eyelash Lace Set online at Aura Intimates. The pinnacle of luxury tailoring. Includes our tailored demi-cup satin bra and matching high-waisted shaping b... Discreet packaging across India."
+    },
+    {
+      "id": "bts-105",
+      "sku": "BTS-EE-01",
+      "name": "Pure Cotton Wireless Daily Contour Bra",
+      "categoryId": "everyday-essentials",
+      "categoryName": "Everyday Essentials",
+      "sellingPrice": 899,
+      "originalPrice": 1099,
+      "discountPercent": 18,
+      "description": "Crafted from 100% combed Pima cotton with double-layered fabric cups that provide natural shaping without underwires. Wide cushioned shoulder straps relieve back and shoulder strain.",
+      "fabricAndCare": "95% Combed Cotton, 5% Spandex. Machine wash gentle in mesh bag, dry in shade.",
+      "hygieneNotice": "7-day sizing exchange with original tags intact.",
+      "stock": 50,
+      "featured": false,
+      "newArrival": false,
+      "isSale": false,
+      "images": [
+        "/images/hero_luxury_innerwear_1792781847179.jpg",
+        "/images/product_seamless_bra_1792781849562.jpg"
+      ],
+      "colors": [
+        {
+          "name": "Pearl Cream",
+          "hex": "#F6F2EC",
+          "imageIndex": 0
+        },
+        {
+          "name": "Soft Blush",
+          "hex": "#E5C4BF",
+          "imageIndex": 0
+        }
+      ],
+      "sizes": [
+        "30B",
+        "32B",
+        "32C",
+        "34B",
+        "34C",
+        "36B",
+        "36C",
+        "38B",
+        "38C"
+      ],
+      "matchingProductIds": [
+        "bts-103"
+      ],
+      "createdAt": "2026-10-15T08:00:00Z",
+      "metaTitle": "Pure Cotton Wireless Daily Contour Bra — Luxury Women's Innerwear | Aura Intimates",
+      "metaDescription": "Shop Pure Cotton Wireless Daily Contour Bra online at Aura Intimates. Crafted from 100% combed Pima cotton with double-layered fabric cups that provide natural shaping without unde... Discreet packaging across India."
+    }
+  ],
+  "subscribers": [
+    {
+      "id": "sub_1792782398174",
+      "email": "customer@example.com",
+      "subscribedAt": "2026-10-23T19:06:38.174Z"
+    }
+  ],
+  "orderEnquiries": [
+    {
+      "id": "enq_1792782402388",
+      "items": [
+        {
+          "productId": "bts-101",
+          "productName": "Aura Cloud Seamless T-Shirt Bra",
+          "color": "Nude Blush",
+          "size": "34B",
+          "quantity": 1,
+          "unitPrice": 1299,
+          "subtotal": 1299
+        }
+      ],
+      "subtotal": 1299,
+      "channel": "instagram",
+      "copiedMessage": "Hello Aura Intimates!...",
+      "createdAt": "2026-10-23T19:06:42.388Z"
+    }
+  ],
+  "securityLogs": [
+    {
+      "id": "sec_1792913422851_44dvm",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-25T07:30:22.851Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Owner master login authenticated successfully"
+    },
+    {
+      "id": "sec_1792913415992_gxzdp",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-25T07:30:15.992Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Incorrect master password attempt"
+    },
+    {
+      "id": "sec_1792913411360_zxpw4",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-25T07:30:11.360Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Owner master password initialized successfully."
+    },
+    {
+      "id": "sec_1792911765557_22t57",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-25T07:02:45.557Z",
+      "ip": "127.0.0.1",
+      "userAgent": "Unknown Browser",
+      "details": "Owner master login authenticated successfully"
+    },
+    {
+      "id": "sec_1792911765497_mcbk0",
+      "event": "password_changed",
+      "status": "warning",
+      "timestamp": "2026-10-25T07:02:45.497Z",
+      "ip": "127.0.0.1",
+      "userAgent": "Unknown Browser",
+      "details": "Master password reset via recovery authorization."
+    },
+    {
+      "id": "sec_1792911765320_rl7vq",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-25T07:02:45.320Z",
+      "ip": "127.0.0.1",
+      "userAgent": "Unknown Browser",
+      "details": "Owner master login authenticated successfully"
+    },
+    {
+      "id": "sec_1792911765252_rimp3",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-25T07:02:45.252Z",
+      "ip": "127.0.0.1",
+      "userAgent": "Unknown Browser",
+      "details": "Incorrect master password attempt"
+    },
+    {
+      "id": "sec_1792911765155_msnd7",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-25T07:02:45.155Z",
+      "ip": "127.0.0.1",
+      "userAgent": "Unknown Browser",
+      "details": "Owner master password initialized successfully."
+    },
+    {
+      "id": "sec_1792860015187_6ttuf",
+      "event": "login_failed",
+      "status": "alert",
+      "timestamp": "2026-10-24T16:40:15.187Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Rate limit exceeded. Lockout active (900s remaining)"
+    },
+    {
+      "id": "sec_1792860015166_6s2ea",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-24T16:40:15.166Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Incorrect master password attempt"
+    },
+    {
+      "id": "sec_1792860015080_fdw4h",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-24T16:40:15.080Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Incorrect master password attempt"
+    },
+    {
+      "id": "sec_1792860015001_x1nyq",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-24T16:40:15.001Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Incorrect master password attempt"
+    },
+    {
+      "id": "sec_1792860008329_qaj7k",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-24T16:40:08.329Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Incorrect master password attempt"
+    },
+    {
+      "id": "sec_1792860003170_jq3hi",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-24T16:40:03.170Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Incorrect master password attempt"
+    },
+    {
+      "id": "sec_1792859973886_zlimf",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-24T16:39:33.886Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Owner master login authenticated successfully"
+    },
+    {
+      "id": "sec_1792859968746_k28xk",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-24T16:39:28.746Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Incorrect master password attempt"
+    }
+  ]
+}
