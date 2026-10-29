@@ -22,11 +22,25 @@ export interface SmtpConfigStatus {
   passConfigured: boolean;
   alertEmailConfigured: boolean;
   targetEmail?: string;
+  authError?: string;
 }
 
 // Throttle for failed login alerts to prevent mailbox flooding (max 1 alert every 2 minutes)
 let lastFailedLoginAlertTime = 0;
 let accumulatedFailedAttempts = 0;
+
+// Track SMTP auth failures (e.g. invalid Gmail App Password 535) to prevent spamming failed requests
+let smtpAuthFailureCooldownUntil = 0;
+let lastSmtpAuthErrorMessage = '';
+
+export function isSmtpTemporarilyDisabled(): boolean {
+  return Date.now() < smtpAuthFailureCooldownUntil;
+}
+
+export function resetSmtpAuthCooldown(): void {
+  smtpAuthFailureCooldownUntil = 0;
+  lastSmtpAuthErrorMessage = '';
+}
 
 export function getSmtpStatus(): SmtpConfigStatus {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -45,6 +59,7 @@ export function getSmtpStatus(): SmtpConfigStatus {
     passConfigured: Boolean(pass),
     alertEmailConfigured: Boolean(alertEmail),
     targetEmail: alertEmail ? maskEmail(alertEmail) : undefined,
+    authError: Date.now() < smtpAuthFailureCooldownUntil ? lastSmtpAuthErrorMessage : undefined,
   };
 }
 
@@ -61,10 +76,16 @@ function createTransporter() {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const user = process.env.SMTP_USER?.trim() || '';
-  const pass = process.env.SMTP_PASS?.trim() || '';
+  let pass = process.env.SMTP_PASS?.trim() || '';
 
   if (!user || !pass) {
     return null;
+  }
+
+  // Google App Passwords are 16 characters often copied with spaces (e.g. "abcd efgh ijkl mnop")
+  // Strip spaces if using Gmail to ensure the 16-character token authenticates
+  if (host.includes('gmail.com')) {
+    pass = pass.replace(/\s+/g, '');
   }
 
   return nodemailer.createTransport({
@@ -75,9 +96,9 @@ function createTransporter() {
       user,
       pass,
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
     tls: {
       minVersion: 'TLSv1.2',
       rejectUnauthorized: process.env.NODE_ENV === 'production',
@@ -99,10 +120,22 @@ export async function verifySmtpConnection(): Promise<{ success: boolean; messag
 
   try {
     await transporter.verify();
+    resetSmtpAuthCooldown();
     return { success: true, message: 'SMTP connection verified successfully.' };
   } catch (err: any) {
-    const safeError = err.message || 'SMTP connection verification failed.';
-    return { success: false, message: safeError };
+    const rawError = err.message || 'SMTP connection verification failed.';
+    const isBadCredentials = rawError.includes('535') || rawError.includes('BadCredentials') || rawError.includes('Username and Password not accepted');
+
+    if (isBadCredentials) {
+      smtpAuthFailureCooldownUntil = Date.now() + 15 * 60 * 1000;
+      lastSmtpAuthErrorMessage = 'Invalid SMTP credentials (535 Bad Credentials). If using Gmail, an App Password is required.';
+      return {
+        success: false,
+        message: 'Invalid SMTP credentials (535 Bad Credentials). If using Gmail, please create a 16-character App Password (with 2-Step Verification enabled) instead of your regular Google password.',
+      };
+    }
+
+    return { success: false, message: rawError };
   }
 }
 
@@ -229,11 +262,23 @@ Never share this one-time code with anyone.
       html: htmlBody,
     });
 
+    resetSmtpAuthCooldown();
     console.info(`[SMTP Notification] OTP dispatched to ${maskEmail(alertEmail)} (MessageID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (err: any) {
-    const safeError = err.message || 'SMTP delivery failed';
-    console.error(`[SMTP Notification Error] Failed to send OTP to ${maskEmail(alertEmail)}:`, safeError);
+    const rawError = err.message || 'SMTP delivery failed';
+    const isBadCredentials = rawError.includes('535') || rawError.includes('BadCredentials') || rawError.includes('Username and Password not accepted');
+
+    let safeError = rawError;
+    if (isBadCredentials) {
+      smtpAuthFailureCooldownUntil = Date.now() + 15 * 60 * 1000;
+      lastSmtpAuthErrorMessage = 'Invalid SMTP credentials (535 Bad Credentials). If using Gmail, an App Password is required.';
+      safeError = 'SMTP authentication failed (535 Bad Credentials). If using Gmail, please create a 16-character App Password (with 2-Step Verification enabled) instead of your regular password.';
+      console.warn(`[SMTP Notice] Failed to send OTP to ${maskEmail(alertEmail)}: ${safeError}`);
+    } else {
+      console.warn(`[SMTP Notice] Failed to send OTP to ${maskEmail(alertEmail)}: ${safeError}`);
+    }
+
     return { success: false, error: safeError };
   }
 }
@@ -296,6 +341,10 @@ export async function sendSecurityAlert(payload: SecurityEventPayload): Promise<
       return { success: true, skipped: true };
     }
     lastFailedLoginAlertTime = now;
+  }
+
+  if (Date.now() < smtpAuthFailureCooldownUntil) {
+    return { success: false, skipped: true, error: lastSmtpAuthErrorMessage || 'SMTP alerts temporarily paused' };
   }
 
   const transporter = createTransporter();
@@ -382,18 +431,28 @@ If this was NOT you, please immediately log in to your store and reset your mast
 `.trim();
 
   try {
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: `"${brandName} Security" <${process.env.SMTP_USER}>`,
       to: alertEmail,
       subject: eventMetadata.subject,
       text: textBody,
       html: htmlBody,
     });
+    resetSmtpAuthCooldown();
     return { success: true };
   } catch (err: any) {
-    const safeError = err.message || 'SMTP alert dispatch error';
-    console.error(`[SMTP Alert Error] Failed to send ${payload.event} alert:`, safeError);
-    return { success: false, error: safeError };
+    const rawError = err.message || 'SMTP alert dispatch error';
+    const isBadCredentials = rawError.includes('535') || rawError.includes('BadCredentials') || rawError.includes('Username and Password not accepted');
+
+    if (isBadCredentials) {
+      smtpAuthFailureCooldownUntil = Date.now() + 15 * 60 * 1000;
+      lastSmtpAuthErrorMessage = 'Invalid SMTP credentials (535 Bad Credentials). If using Gmail, an App Password is required.';
+      console.warn(`[SMTP Notice] Skipped sending ${payload.event} alert: Gmail SMTP rejected the configured credentials (535-5.7.8). To receive email alerts, create an App Password in your Google Account Security settings.`);
+    } else {
+      console.warn(`[SMTP Notice] Failed to send ${payload.event} alert:`, rawError);
+    }
+
+    return { success: false, error: rawError };
   }
 }
 

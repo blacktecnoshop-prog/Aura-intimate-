@@ -27,7 +27,10 @@ import {
   ExternalLink,
   ChevronRight,
   TrendingUp,
-  Tag
+  Tag,
+  Mail,
+  Send,
+  RotateCcw
 } from 'lucide-react';
 import { Product, Category, StoreSettings, OrderEnquiry, ProductColor, ProductVariant, SecurityLogEntry } from '../../types/store';
 import {
@@ -37,6 +40,7 @@ import {
   adminSetupPassword,
   adminRequestReset,
   adminResetPassword,
+  rotateRecoveryKey,
   fetchAdminStats,
   fetchAdminEnquiries,
   fetchSecurityLogs,
@@ -120,6 +124,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Master Password Reset & Recovery State
   const [isResetMode, setIsResetMode] = useState(false);
+  const [recoveryMethod, setRecoveryMethod] = useState<'key' | 'otp'>('key');
   const [resetIdentifier, setResetIdentifier] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
@@ -128,8 +133,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [resetSuccess, setResetSuccess] = useState('');
   const [requestingCode, setRequestingCode] = useState(false);
   const [requestCodeMsg, setRequestCodeMsg] = useState('');
+  const [resendCountdown, setResendCountdown] = useState<number>(0);
   const [generatedRecoveryKey, setGeneratedRecoveryKey] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
+  const [rotatingKey, setRotatingKey] = useState(false);
+  const [rotateKeyMsg, setRotateKeyMsg] = useState('');
+
+  // 60-second cooldown timer effect
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCountdown]);
 
   // Active Tab: Mobile friendly bottom bar / navigation
   type TabType = 'overview' | 'products' | 'categories' | 'enquiries' | 'settings' | 'security' | 'activity';

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "reset-owner": "tsx server/scripts/reset-owner.ts"
+    "reset-owner": "tsx server/scripts/reset-owner.ts",
+    "generate-recovery-key": "tsx server/scripts/generate-recovery-key.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

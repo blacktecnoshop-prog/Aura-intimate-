@@ -10,6 +10,14 @@ import {
   getSmtpStatus,
   verifySmtpConnection,
 } from './server/services/notification.js';
+import {
+  hashPassword,
+  verifyPassword,
+  verifyPasswordWithDiagnostics,
+  logAuthFailureDiagnostic,
+  generateNewRecoveryKey,
+  validateRecoveryKey,
+} from './server/services/admin.js';
 
 dotenv.config();
 
@@ -57,20 +65,6 @@ app.use(['/images', '/uploads', '/src/assets/images'], (_req, res) => {
 });
 
 const STORE_FILE = path.join(DATA_DIR, 'store.json');
-
-// Password security helpers
-function hashPassword(password: string, salt: string): string {
-  return crypto.scryptSync(password, salt, 64).toString('hex');
-}
-
-function verifyPassword(password: string, hash: string, salt: string): boolean {
-  try {
-    const key = crypto.scryptSync(password, salt, 64).toString('hex');
-    return crypto.timingSafeEqual(Buffer.from(key, 'hex'), Buffer.from(hash, 'hex'));
-  } catch {
-    return false;
-  }
-}
 
 // Persistent active admin sessions: token -> { expiresAt: number; createdAt: number }
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
@@ -865,32 +859,30 @@ app.post('/api/admin/login', (req, res) => {
     });
   }
 
-  const { password } = req.body;
-  if (!password) {
+  const rawPassword = req.body.password || req.body.masterPassword || req.body.ownerPassword;
+  if (!rawPassword || typeof rawPassword !== 'string') {
     return res.status(400).json({ error: 'Password is required' });
   }
 
-  // 1. Check credentials or environment override
-  let isMatch = false;
-  if (store.admin?.passwordHash && store.admin?.salt) {
-    isMatch = verifyPassword(password, store.admin.passwordHash, store.admin.salt);
-  }
-
+  // 1. Check credentials with full cryptographic diagnostics
   const envPwd = process.env.ADMIN_PASSWORD || process.env.ADMIN_INITIAL_PASSWORD;
-  if (!isMatch && envPwd && password === envPwd) {
-    isMatch = true;
-    const newSalt = crypto.randomBytes(16).toString('hex');
-    store.admin.salt = newSalt;
-    store.admin.passwordHash = hashPassword(envPwd, newSalt);
-    store.admin.setupCompleted = true;
-    store.admin.lastPasswordChange = new Date().toISOString();
-    saveStore(store);
-  }
+  const authResult = verifyPasswordWithDiagnostics(
+    rawPassword,
+    store.admin?.passwordHash,
+    store.admin?.salt,
+    Boolean(store.admin?.setupCompleted),
+    envPwd
+  );
 
-  // 2. If password does NOT match, enforce rate limiting & lockouts
-  if (!isMatch) {
+  // 2. If password does NOT match, log failure diagnostics and enforce rate limits
+  if (!authResult.isMatch) {
     const rateLimitStatus = checkLoginRateLimit(clientIp);
-    if (!rateLimitStatus.allowed) {
+    const rateLimitLocked = !rateLimitStatus.allowed;
+
+    // Log exact failure state safely without leaking passwords or raw credentials
+    logAuthFailureDiagnostic(req, authResult, clientIp, rateLimitLocked);
+
+    if (rateLimitLocked) {
       logSecurityEvent(store, 'rate_limit_lockout', 'alert', req, `Rate limit exceeded. Lockout active (${rateLimitStatus.retryAfterSeconds}s remaining)`);
       sendSecurityAlert({
         event: 'rate_limit_lockout',
@@ -905,7 +897,7 @@ app.post('/api/admin/login', (req, res) => {
     }
 
     recordFailedLoginAttempt(clientIp);
-    logSecurityEvent(store, 'login_failed', 'warning', req, 'Incorrect master password attempt');
+    logSecurityEvent(store, 'login_failed', 'warning', req, `Incorrect master password attempt (${authResult.failureReason})`);
     sendSecurityAlert({
       event: 'login_failed',
       ip: clientIp,
@@ -914,6 +906,28 @@ app.post('/api/admin/login', (req, res) => {
       details: 'Failed master password attempt on owner login portal.',
     }).catch((err) => console.warn('Alert delivery warning:', err));
     return res.status(401).json({ error: 'Invalid owner credentials. Access denied.' });
+  }
+
+  // Seamlessly sync environment or trimmed password upgrades if applicable
+  if (authResult.matchType === 'env' && envPwd) {
+    const newSalt = crypto.randomBytes(16).toString('hex');
+    store.admin.salt = newSalt;
+    store.admin.passwordHash = hashPassword(envPwd, newSalt);
+    store.admin.setupCompleted = true;
+    store.admin.lastPasswordChange = new Date().toISOString();
+    saveStore(store);
+  } else if (authResult.matchType === 'trimmed_scrypt' && typeof rawPassword === 'string') {
+    const newSalt = crypto.randomBytes(16).toString('hex');
+    store.admin.salt = newSalt;
+    store.admin.passwordHash = hashPassword(rawPassword.trim(), newSalt);
+    store.admin.lastPasswordChange = new Date().toISOString();
+    saveStore(store);
+  } else if (authResult.matchType === 'legacy_scrypt32' && typeof rawPassword === 'string') {
+    const newSalt = crypto.randomBytes(16).toString('hex');
+    store.admin.salt = newSalt;
+    store.admin.passwordHash = hashPassword(rawPassword, newSalt);
+    store.admin.lastPasswordChange = new Date().toISOString();
+    saveStore(store);
   }
 
   // 3. Success: reset rate limit & issue persistent session token
@@ -1021,6 +1035,18 @@ app.post('/api/admin/request-reset', async (req, res) => {
     });
   }
 
+  // Resend cooldown: at least 60 seconds between OTP dispatches
+  const now = Date.now();
+  const lastGeneratedAt = (store.admin as any)?.resetCodeGeneratedAt || 0;
+  const resendCooldownSec = 60;
+  if (now - lastGeneratedAt < resendCooldownSec * 1000) {
+    const remaining = Math.ceil((resendCooldownSec * 1000 - (now - lastGeneratedAt)) / 1000);
+    return res.status(429).json({
+      error: `Please wait ${remaining} seconds before requesting a new verification code.`,
+      cooldownRemaining: remaining
+    });
+  }
+
   if (!store.admin?.setupCompleted || !store.admin?.passwordHash) {
     return res.json({
       success: true,
@@ -1032,9 +1058,10 @@ app.post('/api/admin/request-reset', async (req, res) => {
   const smtpStatus = getSmtpStatus();
   if (!smtpStatus.configured) {
     logSecurityEvent(store, 'login_failed', 'warning', req, 'Password reset requested but SMTP is not configured.');
-    return res.status(400).json({
+    return res.status(503).json({
       success: false,
-      error: 'SMTP email delivery is not configured on this server. To receive OTP emails, configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and ALERT_EMAIL in your environment settings. Alternatively, you can recover access using your secret Recovery Key, ADMIN_PASSWORD environment override, or the local recovery command (npm run reset-owner).'
+      error: 'SMTP email delivery is not configured on this server. To receive OTP emails, configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and ALERT_EMAIL in your environment settings.',
+      hint: 'You can restore access immediately without email by switching to the "Emergency Recovery Key" tab or setting ADMIN_SETUP_SECRET.'
     });
   }
 
@@ -1044,7 +1071,10 @@ app.post('/api/admin/request-reset', async (req, res) => {
   store.admin.resetCodeHash = hashPassword(resetCode, salt);
   store.admin.resetCodeExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
   store.admin.resetCodeAttempts = 0;
+  (store.admin as any).resetCodeGeneratedAt = now;
   saveStore(store);
+
+  console.info(`[OTP Request] Client IP: ${clientIp} | Recipient: ${smtpStatus.targetEmail || 'unknown'} | Host: ${smtpStatus.host}:${smtpStatus.port}`);
 
   // Send real email via SMTP
   const emailResult = await sendOtpEmail({
@@ -1059,12 +1089,14 @@ app.post('/api/admin/request-reset', async (req, res) => {
     delete store.admin.resetCodeHash;
     delete store.admin.resetCodeExpiresAt;
     delete store.admin.resetCodeAttempts;
+    delete (store.admin as any).resetCodeGeneratedAt;
     saveStore(store);
 
     logSecurityEvent(store, 'login_failed', 'alert', req, `Failed to dispatch password reset OTP: ${emailResult.error}`);
     return res.status(503).json({
       success: false,
-      error: `Email delivery failed: ${emailResult.error}. Please check your SMTP credentials or use your Recovery Key / ADMIN_PASSWORD.`
+      error: `Email delivery failed: ${emailResult.error}`,
+      hint: 'If email delivery is failing, you can regain access immediately with your Emergency Recovery Key, ADMIN_PASSWORD environment override, or the local recovery command (npm run generate-recovery-key).'
     });
   }
 
@@ -1091,28 +1123,24 @@ app.post('/api/admin/reset-password', (req, res) => {
   let authorized = false;
   let authMethod = '';
 
-  // 1. Check against ADMIN_SETUP_SECRET from env
-  const setupSecret = process.env.ADMIN_SETUP_SECRET || process.env.OWNER_SECRET;
-  if (setupSecret && recoveryKey && recoveryKey.trim() === setupSecret.trim()) {
-    authorized = true;
-    authMethod = 'environment_setup_secret';
-  }
-
-  // 2. Check against stored recovery key
-  if (!authorized && recoveryKey && store.admin?.recoveryKeyHash && store.admin?.salt) {
-    if (verifyPassword(recoveryKey.trim(), store.admin.recoveryKeyHash, store.admin.salt)) {
+  // 1. Check against Recovery Key or environment recovery secret
+  if (recoveryKey && typeof recoveryKey === 'string') {
+    const envSetupSecret = process.env.ADMIN_SETUP_SECRET || process.env.OWNER_SECRET || process.env.ADMIN_RECOVERY_KEY;
+    const recoveryCheck = validateRecoveryKey(recoveryKey, store.admin?.recoveryKeyHash, store.admin?.salt, envSetupSecret);
+    if (recoveryCheck.isValid) {
       authorized = true;
-      authMethod = 'recovery_key';
+      authMethod = recoveryCheck.authMethod || 'recovery_key';
     }
   }
 
-  // 3. Check against reset code (valid for 10 mins, max 5 attempts)
+  // 2. Check against reset code (valid for 10 mins, max 5 attempts)
   if (!authorized && resetCode && store.admin?.resetCodeHash && store.admin?.resetCodeExpiresAt && store.admin?.salt) {
     // Check expiry
     if (Date.now() > store.admin.resetCodeExpiresAt) {
       delete store.admin.resetCodeHash;
       delete store.admin.resetCodeExpiresAt;
       delete store.admin.resetCodeAttempts;
+      delete (store.admin as any).resetCodeGeneratedAt;
       saveStore(store);
       return res.status(401).json({ error: 'The 6-digit verification code has expired. Please request a new code.' });
     }
@@ -1123,6 +1151,7 @@ app.post('/api/admin/reset-password', (req, res) => {
       delete store.admin.resetCodeHash;
       delete store.admin.resetCodeExpiresAt;
       delete store.admin.resetCodeAttempts;
+      delete (store.admin as any).resetCodeGeneratedAt;
       saveStore(store);
       logSecurityEvent(store, 'login_failed', 'alert', req, 'Excessive failed OTP attempts. Code was invalidated.');
       return res.status(429).json({ error: 'Too many incorrect verification attempts. This code has been invalidated for security. Please request a new code.' });
@@ -1142,19 +1171,21 @@ app.post('/api/admin/reset-password', (req, res) => {
     return res.status(401).json({ error: 'Invalid recovery key or expired verification code. Access denied.' });
   }
 
+  // Update password and generate a replacement recovery key
   const newSalt = crypto.randomBytes(16).toString('hex');
   const newHash = hashPassword(newPassword, newSalt);
-  const newRecoveryKey = `bts_rec_${crypto.randomBytes(16).toString('hex')}`;
-  const recoveryKeyHash = hashPassword(newRecoveryKey, newSalt);
+  const newRecovery = generateNewRecoveryKey(newSalt);
 
   store.admin.salt = newSalt;
   store.admin.passwordHash = newHash;
-  store.admin.recoveryKeyHash = recoveryKeyHash;
+  store.admin.recoveryKeyHash = newRecovery.hash;
   store.admin.setupCompleted = true;
   store.admin.lastPasswordChange = new Date().toISOString();
+  (store.admin as any).lastRecoveryKeyGenerated = new Date().toISOString();
   delete store.admin.resetCodeHash;
   delete store.admin.resetCodeExpiresAt;
   delete store.admin.resetCodeAttempts;
+  delete (store.admin as any).resetCodeGeneratedAt;
   saveStore(store);
 
   resetLoginRateLimit(clientIp);
@@ -1175,8 +1206,26 @@ app.post('/api/admin/reset-password', (req, res) => {
   res.json({
     success: true,
     token: newToken,
-    recoveryKey: newRecoveryKey,
-    message: 'Master password successfully reset. You are now securely authenticated.'
+    recoveryKey: newRecovery.key,
+    message: 'Master password successfully reset! A new Emergency Recovery Key has been generated for your vault.'
+  });
+});
+
+// Rotate / Generate Emergency Recovery Key (Owner-only)
+app.post('/api/admin/rotate-recovery-key', requireAdmin, (req, res) => {
+  const store = getStore();
+  const salt = store.admin?.salt || crypto.randomBytes(16).toString('hex');
+  store.admin.salt = salt;
+  const newRecovery = generateNewRecoveryKey(salt);
+  store.admin.recoveryKeyHash = newRecovery.hash;
+  (store.admin as any).lastRecoveryKeyGenerated = new Date().toISOString();
+  saveStore(store);
+
+  logSecurityEvent(store, 'password_changed', 'warning', req, 'Owner rotated their emergency recovery key.');
+  res.json({
+    success: true,
+    recoveryKey: newRecovery.key,
+    message: 'A new Emergency Recovery Key has been generated. Store it securely; any prior recovery keys are now invalidated.'
   });
 });
 

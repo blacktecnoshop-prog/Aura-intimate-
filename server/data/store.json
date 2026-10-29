@@ -1,10 +1,10 @@
 {
   "admin": {
-    "salt": "890bd883078fd52d12389ad2ae1d8b7f",
-    "passwordHash": "0c15b2119c1a8e2e4a0a31f5ee5e395477fb330a655aa37d82bb62350ee937451fb46e2c3624d54dff48aec6aa40aafd8caee07f3c1fbcb4407b6eaff0035cdb",
+    "salt": "cdf48bb729c1d9b611548ca1f003d5a0",
+    "passwordHash": "a13d772a300055e6c61a287f6ef2f12c805e9a2e32cdf6c2a5f4d58c7bd51fb0e451c50664add9dd7751c820f53bf959a4ac3daa8be0feb07bdcdf5df6e0237a",
     "recoveryKeyHash": "4e548193b0e5e78ed5b9813bc3d0eee6d603c75dbdf7c20ffb9c66f0d9369c791d56151d12b0ef9e1562174bcc3b3c18112daf328d9d889d1ff97e4b53a6ff87",
     "setupCompleted": true,
-    "lastPasswordChange": "2026-10-29T05:26:35.589Z"
+    "lastPasswordChange": "2026-10-29T05:52:38.743Z"
   },
   "settings": {
     "brandName": "Aura Intimates",
@@ -382,6 +382,42 @@
     }
   ],
   "securityLogs": [
+    {
+      "id": "sec_1793253913547_yx9eb",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-29T06:05:13.547Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Owner master login authenticated successfully"
+    },
+    {
+      "id": "sec_1793253158810_zgc6y",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-29T05:52:38.810Z",
+      "ip": "127.0.0.1",
+      "userAgent": "node",
+      "details": "Owner master login authenticated successfully"
+    },
+    {
+      "id": "sec_1793253158744_wbxc1",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-29T05:52:38.744Z",
+      "ip": "127.0.0.1",
+      "userAgent": "node",
+      "details": "Owner master login authenticated successfully"
+    },
+    {
+      "id": "sec_1793253158538_4pzht",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-29T05:52:38.538Z",
+      "ip": "127.0.0.1",
+      "userAgent": "node",
+      "details": "Incorrect master password attempt (CREDENTIAL_HASH_MISMATCH)"
+    },
     {
       "id": "sec_1793251590473_wd0pw",
       "event": "login_failed",

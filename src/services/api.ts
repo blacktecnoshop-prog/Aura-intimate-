@@ -205,6 +205,16 @@ export async function adminResetPassword(payload: {
   return data;
 }
 
+export async function rotateRecoveryKey(): Promise<{ success: boolean; recoveryKey: string; message: string }> {
+  const res = await fetch(`${API_BASE}/admin/rotate-recovery-key`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to generate new recovery key');
+  return data;
+}
+
 export async function fetchAdminStats(): Promise<any> {
   const res = await fetch(`${API_BASE}/admin/stats`, {
     headers: getAuthHeaders(),
