@@ -141,9 +141,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelectProdu
             toggleWishlist(product.id);
           }}
           aria-label={wishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-[#3D1E2F] hover:text-[#8B6B75] transition-colors z-10"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center transition-all z-10 text-stone-400 hover:text-rose-600"
         >
-          <Heart size={16} className={wishlisted ? 'fill-[#8B6B75] text-[#8B6B75]' : ''} />
+          <Heart
+            size={16}
+            className={`transition-colors duration-200 ${
+              wishlisted
+                ? 'fill-rose-600 text-rose-600'
+                : 'text-stone-400 hover:text-rose-500 fill-none'
+            }`}
+          />
         </button>
 
         {/* Genuine Badge Indicator (e.g. Sale, New Arrival) */}

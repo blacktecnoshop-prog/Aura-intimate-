@@ -97,12 +97,44 @@ export async function logOrderEnquiry(payload: {
 
 // ================= ADMIN API =================
 
-export async function checkAdminStatus(): Promise<{ authenticated: boolean; setupCompleted: boolean; lastPasswordChange?: string }> {
+export async function checkAdminStatus(): Promise<{
+  authenticated: boolean;
+  setupCompleted: boolean;
+  lastPasswordChange?: string;
+  smtpConfigured?: boolean;
+  smtpTarget?: string;
+}> {
   const res = await fetch(`${API_BASE}/admin/status`, {
     headers: getAuthHeaders(),
   });
   if (!res.ok) return { authenticated: false, setupCompleted: false };
   return res.json();
+}
+
+export async function fetchSmtpStatus(): Promise<{
+  configured: boolean;
+  host?: string;
+  port?: number;
+  userConfigured: boolean;
+  passConfigured: boolean;
+  alertEmailConfigured: boolean;
+  targetEmail?: string;
+}> {
+  const res = await fetch(`${API_BASE}/admin/smtp-status`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch SMTP configuration status");
+  return res.json();
+}
+
+export async function testSmtpConnection(): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE}/admin/test-smtp`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "SMTP test failed");
+  return data;
 }
 
 export async function adminLogin(password: string): Promise<{ success: boolean; token: string }> {

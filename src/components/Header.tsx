@@ -144,12 +144,20 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
           <button
             onClick={() => handleNavClick('all')}
             aria-label="Wishlist"
-            className="p-1.5 text-[#3D1E2F] hover:text-[#2B1220] transition-colors relative"
+            className="p-1.5 text-[#3D1E2F] hover:text-rose-600 transition-colors relative"
             title={`${wishlist.length} item(s) in wishlist`}
           >
-            <Heart size={20} strokeWidth={1.75} className={wishlist.length > 0 ? 'fill-[#8B6B75] text-[#8B6B75]' : ''} />
+            <Heart
+              size={20}
+              strokeWidth={1.75}
+              className={`transition-colors duration-200 ${
+                wishlist.length > 0
+                  ? 'fill-rose-600 text-rose-600'
+                  : 'text-[#3D1E2F] hover:text-rose-600 fill-none'
+              }`}
+            />
             {wishlist.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#8B6B75] text-white text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center tabular-nums">
+              <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center tabular-nums shadow-xs">
                 {wishlist.length}
               </span>
             )}

@@ -121,9 +121,16 @@ export const RecentlyViewed: React.FC<RecentlyViewedProps> = ({ allProducts, onS
                       toggleWishlist(prod.id);
                     }}
                     aria-label="Wishlist"
-                    className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-[#3D1E2F] hover:text-[#8B6B75] transition-colors"
+                    className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center transition-all text-stone-400 hover:text-rose-600"
                   >
-                    <Heart size={14} className={wishlisted ? 'fill-[#8B6B75] text-[#8B6B75]' : ''} />
+                    <Heart
+                      size={14}
+                      className={`transition-colors duration-200 ${
+                        wishlisted
+                          ? 'fill-rose-600 text-rose-600'
+                          : 'text-stone-400 hover:text-rose-500 fill-none'
+                      }`}
+                    />
                   </button>
 
                   {/* Quick View Button on Hover */}

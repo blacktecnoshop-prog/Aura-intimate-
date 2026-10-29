@@ -1,10 +1,10 @@
 {
   "admin": {
-    "salt": "be238cceca11b3ce6b75f1e78375b05c",
-    "passwordHash": "c17cada3d4c05ee203f183f8681e2ff84d9550bbff6596e22e920cbed6b308637de7e9b7840cfc246e509277828dda05a961dc0264745c3979272b05c4acc764",
-    "recoveryKeyHash": "168e152b32665553321345db53cd743acdad596da006fe60aed92d97409047dd69f1e7fcf889e65da1633b3e88874aed1857a93c40f809fe42380630fcdeccb1",
+    "salt": "890bd883078fd52d12389ad2ae1d8b7f",
+    "passwordHash": "0c15b2119c1a8e2e4a0a31f5ee5e395477fb330a655aa37d82bb62350ee937451fb46e2c3624d54dff48aec6aa40aafd8caee07f3c1fbcb4407b6eaff0035cdb",
+    "recoveryKeyHash": "4e548193b0e5e78ed5b9813bc3d0eee6d603c75dbdf7c20ffb9c66f0d9369c791d56151d12b0ef9e1562174bcc3b3c18112daf328d9d889d1ff97e4b53a6ff87",
     "setupCompleted": true,
-    "lastPasswordChange": "2026-10-25T07:30:11.357Z"
+    "lastPasswordChange": "2026-10-29T05:26:35.589Z"
   },
   "settings": {
     "brandName": "Aura Intimates",
@@ -382,6 +382,60 @@
     }
   ],
   "securityLogs": [
+    {
+      "id": "sec_1793251590473_wd0pw",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-29T05:26:30.473Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Incorrect master password attempt"
+    },
+    {
+      "id": "sec_1793251583327_t3l89",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-29T05:26:23.327Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Owner master login authenticated successfully"
+    },
+    {
+      "id": "sec_1793251560674_66gtl",
+      "event": "login_success",
+      "status": "success",
+      "timestamp": "2026-10-29T05:26:00.674Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "details": "Owner master password initialized successfully."
+    },
+    {
+      "id": "sec_1793250810847_hhs13",
+      "event": "login_failed",
+      "status": "alert",
+      "timestamp": "2026-10-29T05:13:30.847Z",
+      "ip": "2402:3a80:4615:111e:0:35:b9bc:2c01",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "details": "Failed to dispatch password reset OTP: Invalid login: 535-5.7.8 Username and Password not accepted. For more information, go to\n535 5.7.8  https://support.google.com/mail/?p=BadCredentials 5a478bee46e88-36a23908542sm13750380eec.10 - gsmtp"
+    },
+    {
+      "id": "sec_1793250805340_9d39s",
+      "event": "login_failed",
+      "status": "alert",
+      "timestamp": "2026-10-29T05:13:25.340Z",
+      "ip": "2402:3a80:4615:111e:0:35:b9bc:2c01",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "details": "Failed to dispatch password reset OTP: Invalid login: 535-5.7.8 Username and Password not accepted. For more information, go to\n535 5.7.8  https://support.google.com/mail/?p=BadCredentials 5a478bee46e88-36a2398fa4csm15581762eec.24 - gsmtp"
+    },
+    {
+      "id": "sec_1793250798789_8kn7a",
+      "event": "login_failed",
+      "status": "warning",
+      "timestamp": "2026-10-29T05:13:18.789Z",
+      "ip": "2402:3a80:4615:111e:0:35:b9bc:2c01",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "details": "Incorrect master password attempt"
+    },
     {
       "id": "sec_1792913422851_44dvm",
       "event": "login_success",

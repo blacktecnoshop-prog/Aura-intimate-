@@ -1,10 +1,15 @@
+import dotenv from 'dotenv';
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-import { sendSecurityAlert } from './server/services/notification.js';
+import {
+  sendSecurityAlert,
+  sendOtpEmail,
+  getSmtpStatus,
+  verifySmtpConnection,
+} from './server/services/notification.js';
 
 dotenv.config();
 
@@ -67,21 +72,71 @@ function verifyPassword(password: string, hash: string, salt: string): boolean {
   }
 }
 
-// In-memory active admin sessions: token -> { expiresAt: number }
-const activeSessions = new Map<string, { expiresAt: number }>();
+// Persistent active admin sessions: token -> { expiresAt: number; createdAt: number }
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+
+function loadSessions(): Map<string, { expiresAt: number; createdAt: number }> {
+  const map = new Map<string, { expiresAt: number; createdAt: number }>();
+  if (!fs.existsSync(SESSIONS_FILE)) return map;
+  try {
+    const raw = fs.readFileSync(SESSIONS_FILE, 'utf-8');
+    const data = JSON.parse(raw);
+    const now = Date.now();
+    for (const [token, session] of Object.entries(data)) {
+      if (session && typeof session === 'object' && (session as any).expiresAt > now) {
+        map.set(token, session as { expiresAt: number; createdAt: number });
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read sessions.json:', err);
+  }
+  return map;
+}
+
+const activeSessions = loadSessions();
+
+function persistSessions() {
+  try {
+    const obj: Record<string, { expiresAt: number; createdAt: number }> = {};
+    const now = Date.now();
+    for (const [token, session] of activeSessions.entries()) {
+      if (session.expiresAt > now) {
+        obj[token] = session;
+      }
+    }
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Could not persist sessions.json:', err);
+  }
+}
 
 function generateSessionToken(): string {
   const token = crypto.randomBytes(32).toString('hex');
-  activeSessions.set(token, { expiresAt: Date.now() + 24 * 60 * 60 * 1000 }); // 24 hours
+  activeSessions.set(token, { expiresAt: Date.now() + 24 * 60 * 60 * 1000, createdAt: Date.now() }); // 24 hours
+  persistSessions();
   return token;
 }
 
 function isSessionValid(token: string | undefined): boolean {
   if (!token) return false;
+  // If not found in memory, re-read sessions file in case multi-process / restart occurred
+  if (!activeSessions.has(token) && fs.existsSync(SESSIONS_FILE)) {
+    try {
+      const raw = fs.readFileSync(SESSIONS_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (data[token] && data[token].expiresAt > Date.now()) {
+        activeSessions.set(token, data[token]);
+      }
+    } catch {
+      // ignore read error
+    }
+  }
+
   const session = activeSessions.get(token);
   if (!session) return false;
   if (Date.now() > session.expiresAt) {
     activeSessions.delete(token);
+    persistSessions();
     return false;
   }
   return true;
@@ -123,10 +178,33 @@ function resetLoginRateLimit(ip: string): void {
   loginRateLimitMap.delete(ip);
 }
 
+// Rate Limiting for Reset Code (OTP) Requests: Max 3 requests per 15 minutes per IP
+const otpRateLimitMap = new Map<string, { count: number; windowStart: number }>();
+
+function checkOtpRateLimit(ip: string): { allowed: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 mins
+  const maxRequests = 3;
+
+  const entry = otpRateLimitMap.get(ip);
+  if (!entry || now - entry.windowStart > windowMs) {
+    otpRateLimitMap.set(ip, { count: 1, windowStart: now });
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  if (entry.count >= maxRequests) {
+    const retryAfter = Math.ceil((entry.windowStart + windowMs - now) / 1000);
+    return { allowed: false, retryAfterSeconds: Math.max(1, retryAfter) };
+  }
+
+  entry.count += 1;
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
 // Security Audit Logger
 function logSecurityEvent(
   store: any,
-  event: 'login_success' | 'login_failed' | 'password_changed' | 'session_revoked' | 'settings_updated',
+  event: 'login_success' | 'login_failed' | 'password_changed' | 'session_revoked' | 'settings_updated' | 'otp_requested' | 'rate_limit_lockout',
   status: 'success' | 'warning' | 'alert',
   req: Request,
   details?: string
@@ -465,6 +543,18 @@ function getStore() {
         }
       });
     }
+    const envPwd = process.env.ADMIN_PASSWORD || process.env.ADMIN_INITIAL_PASSWORD;
+    if (envPwd && envPwd.length >= 8 && (!parsed.admin?.passwordHash || !parsed.admin?.setupCompleted)) {
+      const salt = crypto.randomBytes(16).toString('hex');
+      parsed.admin = {
+        salt,
+        passwordHash: hashPassword(envPwd, salt),
+        recoveryKeyHash: '',
+        setupCompleted: true,
+        lastPasswordChange: new Date().toISOString(),
+      };
+      changed = true;
+    }
     if (changed) {
       saveStore(parsed);
     }
@@ -749,10 +839,14 @@ app.get('/api/admin/status', (req, res) => {
   const valid = isSessionValid(token);
   const store = getStore();
   const setupDone = Boolean(store.admin?.setupCompleted && store.admin?.passwordHash);
+  const smtpStatus = getSmtpStatus();
+
   res.json({
     authenticated: valid,
     setupCompleted: setupDone,
-    lastPasswordChange: store.admin?.lastPasswordChange
+    lastPasswordChange: store.admin?.lastPasswordChange,
+    smtpConfigured: smtpStatus.configured,
+    smtpTarget: smtpStatus.targetEmail,
   });
 });
 
@@ -760,22 +854,14 @@ app.get('/api/admin/status', (req, res) => {
 app.post('/api/admin/login', (req, res) => {
   const rawIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || req.socket.remoteAddress || '127.0.0.1';
   const clientIp = rawIp.replace('::ffff:', '');
+  const userAgent = (req.headers['user-agent'] as string) || 'Browser';
   const store = getStore();
 
   const isSetupDone = Boolean(store.admin?.setupCompleted && store.admin?.passwordHash);
   if (!isSetupDone) {
     return res.status(400).json({
       error: 'Owner setup is not completed yet. Please configure your master password in the setup panel.',
-      setupCompleted: false
-    });
-  }
-
-  // 1. Check rate limit
-  const rateLimitStatus = checkLoginRateLimit(clientIp);
-  if (!rateLimitStatus.allowed) {
-    logSecurityEvent(store, 'login_failed', 'alert', req, `Rate limit exceeded. Lockout active (${rateLimitStatus.retryAfterSeconds}s remaining)`);
-    return res.status(429).json({
-      error: `Too many failed login attempts. For security, access from your device is locked for ${Math.ceil((rateLimitStatus.retryAfterSeconds || 60) / 60)} more minutes.`
+      setupCompleted: false,
     });
   }
 
@@ -784,6 +870,7 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(400).json({ error: 'Password is required' });
   }
 
+  // 1. Check credentials or environment override
   let isMatch = false;
   if (store.admin?.passwordHash && store.admin?.salt) {
     isMatch = verifyPassword(password, store.admin.passwordHash, store.admin.salt);
@@ -796,24 +883,55 @@ app.post('/api/admin/login', (req, res) => {
     store.admin.salt = newSalt;
     store.admin.passwordHash = hashPassword(envPwd, newSalt);
     store.admin.setupCompleted = true;
+    store.admin.lastPasswordChange = new Date().toISOString();
     saveStore(store);
   }
 
+  // 2. If password does NOT match, enforce rate limiting & lockouts
   if (!isMatch) {
+    const rateLimitStatus = checkLoginRateLimit(clientIp);
+    if (!rateLimitStatus.allowed) {
+      logSecurityEvent(store, 'rate_limit_lockout', 'alert', req, `Rate limit exceeded. Lockout active (${rateLimitStatus.retryAfterSeconds}s remaining)`);
+      sendSecurityAlert({
+        event: 'rate_limit_lockout',
+        ip: clientIp,
+        userAgent,
+        timestamp: new Date().toISOString(),
+        details: `Multiple failed login attempts from IP ${clientIp}. Device temporarily locked out for security.`,
+      }).catch((err) => console.warn('Alert delivery warning:', err));
+      return res.status(429).json({
+        error: `Too many failed login attempts. For security, access from your device is locked for ${Math.ceil((rateLimitStatus.retryAfterSeconds || 60) / 60)} more minutes.`,
+      });
+    }
+
     recordFailedLoginAttempt(clientIp);
     logSecurityEvent(store, 'login_failed', 'warning', req, 'Incorrect master password attempt');
+    sendSecurityAlert({
+      event: 'login_failed',
+      ip: clientIp,
+      userAgent,
+      timestamp: new Date().toISOString(),
+      details: 'Failed master password attempt on owner login portal.',
+    }).catch((err) => console.warn('Alert delivery warning:', err));
     return res.status(401).json({ error: 'Invalid owner credentials. Access denied.' });
   }
 
-  // Success
+  // 3. Success: reset rate limit & issue persistent session token
   resetLoginRateLimit(clientIp);
   const token = generateSessionToken();
   logSecurityEvent(store, 'login_success', 'success', req, 'Owner master login authenticated successfully');
+  sendSecurityAlert({
+    event: 'login_success',
+    ip: clientIp,
+    userAgent,
+    timestamp: new Date().toISOString(),
+    details: 'Owner logged in successfully to Aura Intimates Dashboard.',
+  }).catch((err) => console.warn('Alert delivery warning:', err));
 
   res.json({
     success: true,
     token,
-    message: 'Welcome back to Aura Intimates Owner Dashboard'
+    message: 'Welcome back to Aura Intimates Owner Dashboard',
   });
 });
 
@@ -823,6 +941,7 @@ app.post('/api/admin/logout', (req, res) => {
   const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7).trim() : undefined;
   if (token) {
     activeSessions.delete(token);
+    persistSessions();
   }
   res.json({ success: true, message: 'Logged out successfully' });
 });
@@ -872,8 +991,9 @@ app.post('/api/admin/setup', (req, res) => {
   // Reset any failed attempts lockout for owner
   resetLoginRateLimit(clientIp);
 
-  // Invalidate all old sessions and issue fresh token
+  // Invalidate all old sessions and issue fresh persistent token
   activeSessions.clear();
+  persistSessions();
   const newToken = generateSessionToken();
 
   const eventType = isAlreadySetup ? 'password_changed' : 'login_success';
@@ -888,10 +1008,18 @@ app.post('/api/admin/setup', (req, res) => {
 });
 
 // Request One-Time Reset Code (Owner-Only)
-app.post('/api/admin/request-reset', (req, res) => {
+app.post('/api/admin/request-reset', async (req, res) => {
   const store = getStore();
   const rawIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || req.socket.remoteAddress || '127.0.0.1';
   const clientIp = rawIp.replace('::ffff:', '');
+  const userAgent = (req.headers['user-agent'] as string) || 'Browser';
+
+  const rateLimitStatus = checkOtpRateLimit(clientIp);
+  if (!rateLimitStatus.allowed) {
+    return res.status(429).json({
+      error: `Too many reset requests from this device. Please wait ${Math.ceil(rateLimitStatus.retryAfterSeconds / 60)} minutes before requesting another code.`
+    });
+  }
 
   if (!store.admin?.setupCompleted || !store.admin?.passwordHash) {
     return res.json({
@@ -901,25 +1029,50 @@ app.post('/api/admin/request-reset', (req, res) => {
     });
   }
 
-  const resetCode = String(Math.floor(100000 + Math.random() * 900000));
+  const smtpStatus = getSmtpStatus();
+  if (!smtpStatus.configured) {
+    logSecurityEvent(store, 'login_failed', 'warning', req, 'Password reset requested but SMTP is not configured.');
+    return res.status(400).json({
+      success: false,
+      error: 'SMTP email delivery is not configured on this server. To receive OTP emails, configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and ALERT_EMAIL in your environment settings. Alternatively, you can recover access using your secret Recovery Key, ADMIN_PASSWORD environment override, or the local recovery command (npm run reset-owner).'
+    });
+  }
+
+  // Generate cryptographically secure 6-digit OTP
+  const resetCode = crypto.randomInt(100000, 1000000).toString();
   const salt = store.admin.salt || crypto.randomBytes(16).toString('hex');
   store.admin.resetCodeHash = hashPassword(resetCode, salt);
-  store.admin.resetCodeExpiresAt = Date.now() + 15 * 60 * 1000;
+  store.admin.resetCodeExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+  store.admin.resetCodeAttempts = 0;
   saveStore(store);
 
-  logSecurityEvent(store, 'password_changed', 'alert', req, 'A master password reset code was requested.');
-
-  sendSecurityAlert({
-    event: 'password_changed',
+  // Send real email via SMTP
+  const emailResult = await sendOtpEmail({
+    otp: resetCode,
     ip: clientIp,
-    userAgent: (req.headers['user-agent'] as string) || 'Browser',
-    timestamp: new Date().toISOString(),
-    details: `Master password reset requested. One-time verification code: ${resetCode} (valid for 15 minutes).`
-  }).catch((err) => console.warn('Alert delivery warning:', err));
+    userAgent,
+    expiresMinutes: 10
+  });
+
+  if (!emailResult.success) {
+    // If delivery fails, invalidate the unusable OTP immediately
+    delete store.admin.resetCodeHash;
+    delete store.admin.resetCodeExpiresAt;
+    delete store.admin.resetCodeAttempts;
+    saveStore(store);
+
+    logSecurityEvent(store, 'login_failed', 'alert', req, `Failed to dispatch password reset OTP: ${emailResult.error}`);
+    return res.status(503).json({
+      success: false,
+      error: `Email delivery failed: ${emailResult.error}. Please check your SMTP credentials or use your Recovery Key / ADMIN_PASSWORD.`
+    });
+  }
+
+  logSecurityEvent(store, 'otp_requested', 'alert', req, 'A 6-digit password reset OTP was dispatched to owner email.');
 
   res.json({
     success: true,
-    message: 'Reset verification code dispatched. If SMTP alerts are configured, check your email. You can also use your secure Recovery Key.'
+    message: `A 6-digit verification code has been dispatched via SMTP to ${smtpStatus.targetEmail || 'your owner email'}. It is valid for 10 minutes.`
   });
 });
 
@@ -927,6 +1080,7 @@ app.post('/api/admin/request-reset', (req, res) => {
 app.post('/api/admin/reset-password', (req, res) => {
   const rawIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || req.socket.remoteAddress || '127.0.0.1';
   const clientIp = rawIp.replace('::ffff:', '');
+  const userAgent = (req.headers['user-agent'] as string) || 'Browser';
   const { recoveryKey, resetCode, newPassword } = req.body;
   const store = getStore();
 
@@ -935,31 +1089,57 @@ app.post('/api/admin/reset-password', (req, res) => {
   }
 
   let authorized = false;
+  let authMethod = '';
 
   // 1. Check against ADMIN_SETUP_SECRET from env
   const setupSecret = process.env.ADMIN_SETUP_SECRET || process.env.OWNER_SECRET;
   if (setupSecret && recoveryKey && recoveryKey.trim() === setupSecret.trim()) {
     authorized = true;
+    authMethod = 'environment_setup_secret';
   }
 
   // 2. Check against stored recovery key
   if (!authorized && recoveryKey && store.admin?.recoveryKeyHash && store.admin?.salt) {
     if (verifyPassword(recoveryKey.trim(), store.admin.recoveryKeyHash, store.admin.salt)) {
       authorized = true;
+      authMethod = 'recovery_key';
     }
   }
 
-  // 3. Check against reset code (valid for 15 mins)
-  if (!authorized && resetCode && store.admin?.resetCodeHash && store.admin?.resetCodeExpiresAt) {
-    if (Date.now() <= store.admin.resetCodeExpiresAt && verifyPassword(resetCode.trim(), store.admin.resetCodeHash, store.admin.salt)) {
+  // 3. Check against reset code (valid for 10 mins, max 5 attempts)
+  if (!authorized && resetCode && store.admin?.resetCodeHash && store.admin?.resetCodeExpiresAt && store.admin?.salt) {
+    // Check expiry
+    if (Date.now() > store.admin.resetCodeExpiresAt) {
+      delete store.admin.resetCodeHash;
+      delete store.admin.resetCodeExpiresAt;
+      delete store.admin.resetCodeAttempts;
+      saveStore(store);
+      return res.status(401).json({ error: 'The 6-digit verification code has expired. Please request a new code.' });
+    }
+
+    // Check attempts limit (max 5)
+    store.admin.resetCodeAttempts = (store.admin.resetCodeAttempts || 0) + 1;
+    if (store.admin.resetCodeAttempts > 5) {
+      delete store.admin.resetCodeHash;
+      delete store.admin.resetCodeExpiresAt;
+      delete store.admin.resetCodeAttempts;
+      saveStore(store);
+      logSecurityEvent(store, 'login_failed', 'alert', req, 'Excessive failed OTP attempts. Code was invalidated.');
+      return res.status(429).json({ error: 'Too many incorrect verification attempts. This code has been invalidated for security. Please request a new code.' });
+    }
+
+    if (verifyPassword(resetCode.trim(), store.admin.resetCodeHash, store.admin.salt)) {
       authorized = true;
+      authMethod = 'otp_verification';
+    } else {
+      saveStore(store);
     }
   }
 
   if (!authorized) {
     recordFailedLoginAttempt(clientIp);
     logSecurityEvent(store, 'login_failed', 'alert', req, 'Failed password recovery attempt: invalid recovery key or code.');
-    return res.status(401).json({ error: 'Invalid recovery key or expired reset code. Access denied.' });
+    return res.status(401).json({ error: 'Invalid recovery key or expired verification code. Access denied.' });
   }
 
   const newSalt = crypto.randomBytes(16).toString('hex');
@@ -974,20 +1154,57 @@ app.post('/api/admin/reset-password', (req, res) => {
   store.admin.lastPasswordChange = new Date().toISOString();
   delete store.admin.resetCodeHash;
   delete store.admin.resetCodeExpiresAt;
+  delete store.admin.resetCodeAttempts;
   saveStore(store);
 
   resetLoginRateLimit(clientIp);
   activeSessions.clear();
+  persistSessions();
   const newToken = generateSessionToken();
 
-  logSecurityEvent(store, 'password_changed', 'warning', req, 'Master password reset via recovery authorization.');
+  sendSecurityAlert({
+    event: 'password_changed',
+    ip: clientIp,
+    userAgent,
+    timestamp: new Date().toISOString(),
+    details: `Master password reset completed via ${authMethod}. All prior device sessions were revoked.`
+  }).catch((err) => console.warn('Alert delivery warning:', err));
+
+  logSecurityEvent(store, 'password_changed', 'warning', req, `Master password reset completed via ${authMethod}.`);
 
   res.json({
     success: true,
     token: newToken,
     recoveryKey: newRecoveryKey,
-    message: 'Master password successfully reset and authenticated.'
+    message: 'Master password successfully reset. You are now securely authenticated.'
   });
+});
+
+// Check SMTP Status (Owner-only)
+app.get('/api/admin/smtp-status', requireAdmin, (_req, res) => {
+  res.json(getSmtpStatus());
+});
+
+// Test SMTP Delivery (Owner-only)
+app.post('/api/admin/test-smtp', requireAdmin, async (req, res) => {
+  const result = await verifySmtpConnection();
+  if (!result.success) {
+    return res.status(400).json(result);
+  }
+  const rawIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || req.socket.remoteAddress || '127.0.0.1';
+  const clientIp = rawIp.replace('::ffff:', '');
+  const userAgent = (req.headers['user-agent'] as string) || 'Browser';
+  const alertResult = await sendSecurityAlert({
+    event: 'login_success',
+    ip: clientIp,
+    userAgent,
+    timestamp: new Date().toISOString(),
+    details: 'Manual SMTP configuration test triggered from Aura Intimates Owner Panel.',
+  });
+  if (!alertResult.success) {
+    return res.status(500).json({ success: false, message: 'SMTP test message delivery failed: ' + alertResult.error });
+  }
+  res.json({ success: true, message: 'SMTP connection and test email verified successfully!' });
 });
 
 // Security Activity Logs Endpoint (Owner-only)
@@ -1007,6 +1224,7 @@ app.post('/api/admin/revoke-sessions', requireAdmin, (req, res) => {
       activeSessions.delete(key);
     }
   });
+  persistSessions();
 
   const store = getStore();
   logSecurityEvent(store, 'session_revoked', 'warning', req, 'Owner revoked all other active sessions.');

@@ -241,9 +241,17 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({
             <button
               onClick={() => toggleWishlist(product.id)}
               aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-              className="p-2 text-[#55464D] hover:text-[#2B1220] hover:bg-black/5 rounded-full transition-colors"
+              className="p-2 text-stone-400 hover:text-rose-600 hover:bg-black/5 rounded-full transition-colors"
+              title={wishlisted ? 'In Wishlist' : 'Add to Wishlist'}
             >
-              <Heart size={18} className={wishlisted ? 'fill-[#8B6B75] text-[#8B6B75]' : ''} />
+              <Heart
+                size={18}
+                className={`transition-colors duration-200 ${
+                  wishlisted
+                    ? 'fill-rose-600 text-rose-600'
+                    : 'text-stone-400 hover:text-rose-500 fill-none'
+                }`}
+              />
             </button>
 
             <button

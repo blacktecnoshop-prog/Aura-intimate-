@@ -144,6 +144,11 @@ const StoreContent: React.FC = () => {
         setActivePolicyPage('size-guide');
         setSelectedProduct(null);
         setProductNotFound(null);
+      } else if (path === '/admin' || path === '/owner') {
+        setIsAdminModalOpen(true);
+        setActivePolicyPage(null);
+        setSelectedProduct(null);
+        setProductNotFound(null);
       } else if (path === '/') {
         setSelectedProduct(null);
         setProductNotFound(null);
@@ -154,6 +159,20 @@ const StoreContent: React.FC = () => {
     window.addEventListener('popstate', syncFromUrl);
     return () => window.removeEventListener('popstate', syncFromUrl);
   }, [products, loading]);
+
+  // Keep URL updated when opening/closing Admin Modal
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isAdminModalOpen) {
+      if (window.location.pathname !== '/admin') {
+        window.history.pushState(null, '', '/admin');
+      }
+    } else {
+      if (window.location.pathname === '/admin' || window.location.pathname === '/owner') {
+        window.history.pushState(null, '', '/');
+      }
+    }
+  }, [isAdminModalOpen]);
 
   const navigateToProduct = (p: Product) => {
     addRecentlyViewed(p.id);
